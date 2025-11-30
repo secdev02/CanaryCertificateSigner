@@ -20,7 +20,7 @@ New-SignedExecutable `
 
 ```
 
-This allows for testing schemes like LDAP:/// :) 
+This allows for testing schemes like LDAP:// :) 
 
 Or other shenanigans
 
