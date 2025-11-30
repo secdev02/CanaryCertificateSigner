@@ -40,8 +40,8 @@ function New-TokenedCertificate {
         return
     }
     
-    Write-Host "CDP URL: $CDPUrl" -ForegroundColor Cyan
-    Write-Host "AIA URL: $AIAUrl" -ForegroundColor Cyan
+    Write-Host ("CDP URL: " + $CDPUrl) -ForegroundColor Cyan
+    Write-Host ("AIA URL: " + $AIAUrl) -ForegroundColor Cyan
     
     # Generate Root CA
     Write-Host "Generating Root CA..." -ForegroundColor Green
@@ -51,7 +51,7 @@ function New-TokenedCertificate {
     $rootPfxPath = Join-Path $PSScriptRoot "root.pfx"
     $rootPassword = ConvertTo-SecureString -String "password" -Force -AsPlainText
     Export-PfxCertificate -Cert $rootCert -FilePath $rootPfxPath -Password $rootPassword | Out-Null
-    Write-Host "Root CA exported to: $rootPfxPath" -ForegroundColor Cyan
+    Write-Host ("Root CA exported to: " + $rootPfxPath) -ForegroundColor Cyan
     
     # Generate Leaf Certificate with Token
     Write-Host "Generating leaf certificate with token..." -ForegroundColor Green
@@ -61,12 +61,12 @@ function New-TokenedCertificate {
     $leafPfxPath = Join-Path $PSScriptRoot "cert.pfx"
     $leafPassword = ConvertTo-SecureString -String "password" -Force -AsPlainText
     Export-PfxCertificate -Cert $leafCert -FilePath $leafPfxPath -Password $leafPassword | Out-Null
-    Write-Host "Leaf certificate exported to: $leafPfxPath" -ForegroundColor Cyan
+    Write-Host ("Leaf certificate exported to: " + $leafPfxPath) -ForegroundColor Cyan
     
     # Display certificate thumbprint
     $thumbprint = $leafCert.Thumbprint
     Write-Host ""
-    Write-Host "Leaf Certificate Thumbprint: $thumbprint" -ForegroundColor Yellow
+    Write-Host ("Leaf Certificate Thumbprint: " + $thumbprint) -ForegroundColor Yellow
     
     if ($ForCodeSigning) {
         Write-Host "Certificate configured for code signing" -ForegroundColor Green
@@ -257,13 +257,7 @@ function New-CDPExtension {
     
     # Step 4: Now wrap with [0] again for distributionPoint field
     # This time it's [0] EXPLICIT DistributionPointName
-    # But wait - IMPLICIT means we don't add another tag layer!
-    # Let me reconsider...
-    
-    # Actually, distributionPoint is [0] EXPLICIT, and fullName is [0] IMPLICIT
-    # So: [0] EXPLICIT { [0] IMPLICIT GeneralNames }
     # Which becomes: A0 len A0 len URI
-    
     $dpFieldLen = Get-DERLength -Length ($fullName.Length / 2)
     $dpField = "A0" + $dpFieldLen + $fullName
     
@@ -312,14 +306,14 @@ namespace SignedApp
         Add-Type -TypeDefinition $csharpCode -ReferencedAssemblies System.Windows.Forms -OutputAssembly $OutputPath -OutputType ConsoleApplication
         
         if (Test-Path $OutputPath) {
-            Write-Host "Executable created: $OutputPath" -ForegroundColor Green
+            Write-Host ("Executable created: " + $OutputPath) -ForegroundColor Green
             return $true
         } else {
             Write-Error "Failed to create executable"
             return $false
         }
     } catch {
-        Write-Error "Error creating executable: $_"
+        Write-Error ("Error creating executable: " + $_)
         return $false
     }
 }
@@ -341,7 +335,7 @@ function Sign-ExecutableWithToken {
     
     # Verify the executable exists
     if (-not (Test-Path $ExePath)) {
-        Write-Error "Executable not found: $ExePath"
+        Write-Error ("Executable not found: " + $ExePath)
         return $false
     }
     
@@ -349,27 +343,27 @@ function Sign-ExecutableWithToken {
     $cert = Get-ChildItem -Path Cert:\CurrentUser\My | Where-Object { $_.Thumbprint -eq $CertificateThumbprint }
     
     if (-not $cert) {
-        Write-Error "Certificate with thumbprint $CertificateThumbprint not found in CurrentUser\My store"
+        Write-Error ("Certificate with thumbprint " + $CertificateThumbprint + " not found in CurrentUser\My store")
         return $false
     }
     
-    Write-Host "Signing executable: $ExePath" -ForegroundColor Green
-    Write-Host "Using certificate: $($cert.Subject)" -ForegroundColor Cyan
+    Write-Host ("Signing executable: " + $ExePath) -ForegroundColor Green
+    Write-Host ("Using certificate: " + $cert.Subject) -ForegroundColor Cyan
     
     try {
         # Sign the executable
         $result = Set-AuthenticodeSignature -FilePath $ExePath -Certificate $cert -TimestampServer $TimestampServer -HashAlgorithm SHA256
         
         if ($result.Status -eq "Valid" -or $result.Status -eq "UnknownError") {
-            Write-Host "Successfully signed: $ExePath" -ForegroundColor Green
-            Write-Host "Signature Status: $($result.Status)" -ForegroundColor Green
+            Write-Host ("Successfully signed: " + $ExePath) -ForegroundColor Green
+            Write-Host ("Signature Status: " + $result.Status) -ForegroundColor Green
             return $true
         } else {
-            Write-Warning "Signing status: $($result.Status)"
+            Write-Warning ("Signing status: " + $result.Status)
             return $true
         }
     } catch {
-        Write-Error "Error signing executable: $_"
+        Write-Error ("Error signing executable: " + $_)
         return $false
     }
 }
@@ -391,12 +385,12 @@ function Sign-ExecutableWithPfx {
     
     # Verify files exist
     if (-not (Test-Path $ExePath)) {
-        Write-Error "Executable not found: $ExePath"
+        Write-Error ("Executable not found: " + $ExePath)
         return $false
     }
     
     if (-not (Test-Path $PfxPath)) {
-        Write-Error "PFX file not found: $PfxPath"
+        Write-Error ("PFX file not found: " + $PfxPath)
         return $false
     }
     
@@ -405,21 +399,21 @@ function Sign-ExecutableWithPfx {
         $cert = New-Object System.Security.Cryptography.X509Certificates.X509Certificate2
         $cert.Import($PfxPath, $PfxPassword, [System.Security.Cryptography.X509Certificates.X509KeyStorageFlags]::Exportable)
         
-        Write-Host "Signing executable: $ExePath" -ForegroundColor Green
-        Write-Host "Using certificate: $($cert.Subject)" -ForegroundColor Cyan
+        Write-Host ("Signing executable: " + $ExePath) -ForegroundColor Green
+        Write-Host ("Using certificate: " + $cert.Subject) -ForegroundColor Cyan
         
         # Sign the executable
         $result = Set-AuthenticodeSignature -FilePath $ExePath -Certificate $cert -TimestampServer $TimestampServer -HashAlgorithm SHA256
         
         if ($result.Status -eq "Valid" -or $result.Status -eq "UnknownError") {
-            Write-Host "Successfully signed: $ExePath" -ForegroundColor Green
+            Write-Host ("Successfully signed: " + $ExePath) -ForegroundColor Green
             return $true
         } else {
-            Write-Warning "Signing status: $($result.Status)"
+            Write-Warning ("Signing status: " + $result.Status)
             return $true
         }
     } catch {
-        Write-Error "Error signing executable: $_"
+        Write-Error ("Error signing executable: " + $_)
         return $false
     }
 }
@@ -431,7 +425,7 @@ function Verify-ExecutableSignature {
     )
     
     if (-not (Test-Path $ExePath)) {
-        Write-Error "Executable not found: $ExePath"
+        Write-Error ("Executable not found: " + $ExePath)
         return
     }
     
@@ -441,17 +435,21 @@ function Verify-ExecutableSignature {
     Write-Host "========================================"  -ForegroundColor Cyan
     Write-Host "Signature Verification" -ForegroundColor Cyan
     Write-Host "========================================"  -ForegroundColor Cyan
-    Write-Host "File: $ExePath" -ForegroundColor Yellow
-    Write-Host "Status: $($signature.Status)" -ForegroundColor $(if ($signature.Status -eq "Valid") { "Green" } else { "Yellow" })
+    Write-Host ("File: " + $ExePath) -ForegroundColor Yellow
+    $statusColor = "Yellow"
+    if ($signature.Status -eq "Valid") {
+        $statusColor = "Green"
+    }
+    Write-Host ("Status: " + $signature.Status) -ForegroundColor $statusColor
     
     if ($signature.SignerCertificate) {
         Write-Host ""
         Write-Host "Certificate Information:" -ForegroundColor Yellow
-        Write-Host "  Subject: $($signature.SignerCertificate.Subject)" -ForegroundColor Cyan
-        Write-Host "  Issuer: $($signature.SignerCertificate.Issuer)" -ForegroundColor Cyan
-        Write-Host "  Thumbprint: $($signature.SignerCertificate.Thumbprint)" -ForegroundColor Cyan
-        Write-Host "  Valid From: $($signature.SignerCertificate.NotBefore)" -ForegroundColor Cyan
-        Write-Host "  Valid To: $($signature.SignerCertificate.NotAfter)" -ForegroundColor Cyan
+        Write-Host ("  Subject: " + $signature.SignerCertificate.Subject) -ForegroundColor Cyan
+        Write-Host ("  Issuer: " + $signature.SignerCertificate.Issuer) -ForegroundColor Cyan
+        Write-Host ("  Thumbprint: " + $signature.SignerCertificate.Thumbprint) -ForegroundColor Cyan
+        Write-Host ("  Valid From: " + $signature.SignerCertificate.NotBefore) -ForegroundColor Cyan
+        Write-Host ("  Valid To: " + $signature.SignerCertificate.NotAfter) -ForegroundColor Cyan
         
         # Show extensions
         Write-Host ""
@@ -479,7 +477,7 @@ function Verify-ExecutableSignature {
     
     if ($signature.TimeStamperCertificate) {
         Write-Host ""
-        Write-Host "Timestamp: $($signature.TimeStamperCertificate.NotBefore)" -ForegroundColor Cyan
+        Write-Host ("Timestamp: " + $signature.TimeStamperCertificate.NotBefore) -ForegroundColor Cyan
     }
     
     Write-Host "========================================" -ForegroundColor Cyan
@@ -498,15 +496,15 @@ function Show-CertificateExtensions {
     Write-Host "========================================" -ForegroundColor Cyan
     Write-Host "Certificate Extensions" -ForegroundColor Cyan
     Write-Host "========================================" -ForegroundColor Cyan
-    Write-Host "Subject: $($Certificate.Subject)" -ForegroundColor Yellow
-    Write-Host "Thumbprint: $($Certificate.Thumbprint)" -ForegroundColor Yellow
+    Write-Host ("Subject: " + $Certificate.Subject) -ForegroundColor Yellow
+    Write-Host ("Thumbprint: " + $Certificate.Thumbprint) -ForegroundColor Yellow
     
     foreach ($ext in $Certificate.Extensions) {
         Write-Host ""
         Write-Host "----------------------------------------" -ForegroundColor DarkGray
-        Write-Host "OID: $($ext.Oid.Value)" -ForegroundColor Cyan
-        Write-Host "Name: $($ext.Oid.FriendlyName)" -ForegroundColor Cyan
-        Write-Host "Critical: $($ext.Critical)" -ForegroundColor Cyan
+        Write-Host ("OID: " + $ext.Oid.Value) -ForegroundColor Cyan
+        Write-Host ("Name: " + $ext.Oid.FriendlyName) -ForegroundColor Cyan
+        Write-Host ("Critical: " + $ext.Critical) -ForegroundColor Cyan
         
         # Decode specific extensions
         if ($ext.Oid.Value -eq "2.5.29.31") {
@@ -523,6 +521,58 @@ function Show-CertificateExtensions {
     Write-Host ""
     Write-Host "========================================" -ForegroundColor Cyan
     Write-Host ""
+}
+
+function Remove-TokenedCertificates {
+    param(
+        [Parameter(Mandatory=$true)]
+        $CertificateInfo
+    )
+
+    Write-Host ""
+    Write-Host "Cleaning up generated certificates..." -ForegroundColor Yellow
+
+    # Remove from CurrentUser\My store
+    $thumbprints = @()
+
+    if ($CertificateInfo.RootCertificate -and $CertificateInfo.RootCertificate.Thumbprint) {
+        $thumbprints += $CertificateInfo.RootCertificate.Thumbprint
+    }
+    if ($CertificateInfo.LeafCertificate -and $CertificateInfo.LeafCertificate.Thumbprint) {
+        $thumbprints += $CertificateInfo.LeafCertificate.Thumbprint
+    }
+
+    foreach ($thumb in $thumbprints) {
+        $path = "Cert:\CurrentUser\My\" + $thumb
+        if (Test-Path $path) {
+            Write-Host ("  Removing certificate from store: " + $thumb) -ForegroundColor Cyan
+            try {
+                Remove-Item -Path $path -Force
+            } catch {
+                Write-Warning ("  Failed to remove " + $thumb + " from store: " + $_)
+            }
+        } else {
+            Write-Host ("  Certificate not found in store: " + $thumb) -ForegroundColor DarkGray
+        }
+    }
+
+    # Remove PFX files if present
+    $pfxPaths = @()
+    if ($CertificateInfo.RootPfxPath)  { $pfxPaths += $CertificateInfo.RootPfxPath }
+    if ($CertificateInfo.LeafPfxPath)  { $pfxPaths += $CertificateInfo.LeafPfxPath }
+
+    foreach ($p in $pfxPaths) {
+        if ($p -and (Test-Path $p)) {
+            Write-Host ("  Deleting PFX file: " + $p) -ForegroundColor Cyan
+            try {
+                Remove-Item -Path $p -Force
+            } catch {
+                Write-Warning ("  Failed to delete PFX file " + $p + ": " + $_)
+            }
+        }
+    }
+
+    Write-Host "Cleanup complete." -ForegroundColor Green
 }
 
 function New-SignedExecutable {
@@ -543,7 +593,10 @@ function New-SignedExecutable {
         [string]$OrgName = "MyCompany",
         
         [Parameter(Mandatory=$false)]
-        [string]$Message = "This is a signed executable with token callbacks!"
+        [string]$Message = "This is a signed executable with token callbacks!",
+
+        [Parameter(Mandatory=$false)]
+        [switch]$Cleanup
     )
     
     # If specific URLs not provided, use TokenUrl for both
@@ -595,21 +648,38 @@ function New-SignedExecutable {
     Write-Host "========================================" -ForegroundColor Cyan
     Write-Host "SUMMARY" -ForegroundColor Cyan
     Write-Host "========================================" -ForegroundColor Cyan
-    Write-Host "CDP URL: $CDPUrl" -ForegroundColor Green
-    Write-Host "AIA URL: $AIAUrl" -ForegroundColor Green
-    Write-Host "Executable: $ExePath" -ForegroundColor Green
-    Write-Host "Certificate PFX: $($certResult.LeafPfxPath)" -ForegroundColor Green
-    Write-Host "Root CA PFX: $($certResult.RootPfxPath)" -ForegroundColor Green
+    Write-Host ("CDP URL: " + $CDPUrl) -ForegroundColor Green
+    Write-Host ("AIA URL: " + $AIAUrl) -ForegroundColor Green
+    Write-Host ("Executable: " + $ExePath) -ForegroundColor Green
+    Write-Host ("Certificate PFX: " + $certResult.LeafPfxPath) -ForegroundColor Green
+    Write-Host ("Root CA PFX: " + $certResult.RootPfxPath) -ForegroundColor Green
     Write-Host "PFX Password: password" -ForegroundColor Yellow
     Write-Host ""
     Write-Host "When Windows validates the signature, it will" -ForegroundColor Cyan
     Write-Host "make HTTP requests to the CDP and AIA URLs" -ForegroundColor Cyan
     Write-Host "========================================" -ForegroundColor Cyan
     Write-Host ""
-    
+
+    # Cleanup prompt / auto-clean
+    $doCleanup = $false
+
+    if ($Cleanup) {
+        # Auto-clean, no prompt
+        $doCleanup = $true
+    } else {
+        $answer = Read-Host "Remove generated certificates and PFX files now? (Y/N)"
+        if ($answer -match '^[Yy]') {
+            $doCleanup = $true
+        }
+    }
+
+    if ($doCleanup) {
+        Remove-TokenedCertificates -CertificateInfo $certResult
+    }
+
     return @{
         ExecutablePath = $ExePath
-        Certificate = $certResult
+        Certificate    = $certResult
     }
 }
 
@@ -619,14 +689,19 @@ Write-Host "Certificate Generator Script Loaded" -ForegroundColor Green
 Write-Host "====================================" -ForegroundColor Green
 Write-Host ""
 Write-Host "Available Functions:" -ForegroundColor Yellow
-Write-Host "  New-SignedExecutable     - Complete workflow (create cert + exe + sign)"
-Write-Host "  New-TokenedCertificate   - Create certificate only"
-Write-Host "  New-SimpleExe            - Create executable only"
-Write-Host "  Sign-ExecutableWithToken - Sign with certificate from store"
-Write-Host "  Sign-ExecutableWithPfx   - Sign with PFX file"
+Write-Host "  New-SignedExecutable       - Complete workflow (create cert + exe + sign)"
+Write-Host "  New-TokenedCertificate     - Create certificate only"
+Write-Host "  New-SimpleExe              - Create executable only"
+Write-Host "  Sign-ExecutableWithToken   - Sign with certificate from store"
+Write-Host "  Sign-ExecutableWithPfx     - Sign with PFX file"
 Write-Host "  Verify-ExecutableSignature - Verify signature"
 Write-Host "  Show-CertificateExtensions - Display certificate extensions"
 Write-Host ""
 Write-Host "Quick Start:" -ForegroundColor Cyan
 Write-Host '  New-SignedExecutable -TokenUrl "http://your-server.com/alert"' -ForegroundColor White
+Write-Host ""
+Write-Host ' New-SignedExecutable `  ' 
+Write-Host '    -TokenUrl "http://default.com" ` ' 
+Write-Host '    -CDPUrl "http://crl.example.com/mycrl.crl" `'
+Write-Host '    -AIAUrl "http://aia.example.com/myca.crt" -Cleanup'
 Write-Host ""
