@@ -25,3 +25,7 @@ This allows for testing schemes like LDAP:/// :)
 Or other shenanigans
 
 
+Create A Canarytoken - DNS or HTTP
+
+
+
