@@ -27,5 +27,7 @@ Or other shenanigans
 
 Create A Canarytoken - DNS or HTTP
 
+Sample Intereptor Use 
 
+`\Interceptor_AIA_CDP.ps1  -AIAUrl "http://192.168.1.100:8082/i.cer" -CDPUrl "http://192.168.1.100:8082/i.crl"
 
